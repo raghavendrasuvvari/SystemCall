@@ -1,0 +1,82 @@
+/*************************************************************************
+*  Name     : README
+*  Author   : Raghavendra Suvvari
+*  Date     : 9th March 2014
+**************************************************************************/
+
+Description :
+***********
+	This files gives the information about all the changes done to implement
+the concat system call from a user land program. The user inputs certain flags and modes
+along with the input files and output file and the system call implemented as a loadable
+module will append or create and concat or truncate depending on the modes and flags passed
+by the user.
+
+The files used to implement this functionality are
+	1. xhw1.c
+	2. sys_xconcat.c
+	3. header.h
+
+The 'Makefile' is used to compile and build the user land program(xhw1.c).
+The system call is loaded into the kernel by using the command "sh installsh install_module.sh"
+
+Here sys_xconcat.c is a loadable system call.	
+
+User land module:
+*****************
+	The user program takes all the inputs that are given by the user through the
+command prompt and passes them in a structure to the kernel module.
+The following arguments are packed in the structure.
+	i.	output file
+	ii.	input files
+	iii.	number of input files
+	iv.	flags to tell the behaviour of system call
+	v.	permissions for the output file
+	vi.	special flags
+
+The below assumptions are made while passing the struct to the kernel module.
+	a. If the user doesnt input any flag then by default 'append' is performed.
+	b. If the user gives a non octal number then we will get an error saying the 
+		mode is invalid.
+	c. If the user doesnt input any mode then by default '755' mode willbe given for
+		the output file to be created.
+	d. The names of the input files and output files are mandatorily to be given by the user. 
+ 
+The below flags are the possible inputs.
+        1. -a : Append Mode (O_APPEND)
+        2. -c : Create Mode (O_CREAT)
+        3. -t : Truncate Mode (O_TRUNC)
+        4. -e : Exclusive Mode (O_EXCL)
+        5. -m ARG : Permission mode
+        6. -A : Atomic Concat mode
+        7. -N : Number of files written
+        8. -P : Percentage of bytes written
+
+
+System call module:
+*******************
+	The system call is implemented by 'sys_xconcat.c' file. It is loaded as a module into the kernel.
+The system call is implemented in two modes - Normal mode and Atomic mode. The 'Atomic mode' is implemented 
+when the user gives 'A' flag. 
+
+The special behaviour in atomic mode is that when writing the input files into the output file if any 
+error occurs then we will not change the outputfile and return an error to the user. This functionality is implemented by 
+using a 'temp' file. Initially the output file is copied into the temp file and all the operations are performed on the temp
+file and if the process is success then we will rename the temp file as the output file. And if any failure occurs then 
+we will unlink the temp file and return the error.
+
+The following validations are performed in the system call before doing any operation
+	a. The passed argument length should be a valid one.
+	b. The given output file should not be null
+	c. The number of input files shouldnt be 0 and should also not be more than 10
+	d. Input file and output file should be different.
+	e. Passed mode should be valid
+	f. Failure or success is checked in all the operations -Read/Write/Open
+	g. User should have all the permissions
+
+All the main validations are done in a seperate function called 'validateInputs'         
+
+The xconcat and validate functions takes the void* pointer and length of the struct variables sent from the user land.
+
+
+If any error is occured then we will be passing the error number to the user program where the appropriate error is displayed.
